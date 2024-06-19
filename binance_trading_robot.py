@@ -16,8 +16,8 @@ import balance_total
     3. Анализ роста выбраной монеты в настоящий момент
     4. Открытие сделки с указанным stop, take и profit по выбранной монете
     5. Закрытие сделки по профиту или стоп цене
-    Настройка по умолчанию: "пара" с USDT; объем сделки = 20 USDT; профит = 1,015; стоп цена = 0,995.
-    Отчеты о сесcии робота сохраняются в data_report.txt
+    Настройка по умолчанию: "пара" с USDT; объем сделки = 20 USDT; профит = 1,03; стоп цена = 0,99.
+    Отчеты о сесии робота сохраняются в data_report.txt
 '''
 
 try:
@@ -32,6 +32,7 @@ def active_coin(): # Поиск самой активной монеты по р
     usdt = all_coins[all_coins.symbol.str.contains('USDT')] # отбор торговых "пар" с USDT
     working = usdt[~((usdt.symbol.str.contains('UP')) | (usdt.symbol.str.contains('DOWN')))] # фильтр монет с малой активностью
     top_coin = working[working.priceChangePercent == working.priceChangePercent.max()] # сортировка по активности
+    print(top_coin)
     top_coin = top_coin.symbol.values[0] # выбор самой активной монеты
     info = client.get_symbol_info(top_coin)
     print(info)
@@ -49,15 +50,15 @@ def last_active_coin(symbol, interval, lookback): # Анализ роста вы
     return frame
 
 
-def robot_strategy(buy_amt, SL=0.9965, Target=1.01, open_position=False): # Стратегия торгового робота
+def robot_strategy(buy_amt, SL=0.99, Target=1.03, open_position=False): # Стратегия торгового робота
     # buy_amt - объем захода в сделку;  SL - порог продажи при падении; Target - порог продажи при росте
     try:
         asset = active_coin() # получаем монету
-        df = last_active_coin(asset,'1m', '60') # анализ активности монеты за промежуток времени
+        df = last_active_coin(asset,'1m', '120') # анализ активности монеты за промежуток времени
     except:  # при ошибке отправляем запрос заноново через одну минуту
         time.sleep(61)
         asset = active_coin()
-        df = last_active_coin(asset, '1m', '60')
+        df = last_active_coin(asset, '1m', '120')
     cur_dt = datetime.datetime.now()
     quantity = round(buy_amt/df.Close.iloc[-1], 1)# округляем сумму до принятых биржей значений
     if ((df.Close.pct_change() + 1).cumprod()).iloc[-1] > 1: # если актив растет
@@ -94,7 +95,6 @@ def robot_strategy(buy_amt, SL=0.9965, Target=1.01, open_position=False): # Ст
                 order = client.create_order(symbol=asset, side='SELL', type='MARKET', quantity=quantity)
                 balance_dial = (quantity * df.Close.iloc[-1] - sum_deal_open) * 1.0003
                 total_balance = total_balance + balance_dial
-                balance_total.total_balance = total_balance
                 cprint(f'Ордер закрыт по неудаче: {order}', color='red')
                 report = open('data_report.txt', 'a+')
                 report.write(f'{cur_dt}\n'
@@ -114,7 +114,6 @@ def robot_strategy(buy_amt, SL=0.9965, Target=1.01, open_position=False): # Ст
                 order = client.create_order(symbol=asset, side='SELL', type='MARKET', quantity=quantity)
                 balance_dial = (quantity * df.Close.iloc[-1] - sum_deal_open) * 0.9997
                 total_balance += balance_dial
-                balance_total.total_balance = total_balance
                 cprint(f'Ордер закрыт по профиту: {order}', color='green')
                 report = open('data_report.txt', 'a+')
                 report.write(f'{cur_dt}\n'
@@ -141,4 +140,5 @@ while True:
     except Exception as exc:
         cprint(f'Ошибка: {exc}', color='red')
         time.sleep(3)
+
 
