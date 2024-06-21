@@ -147,12 +147,5 @@ while True:
         cprint(f'Ошибка: {exc}', color='red')
         time.sleep(3)
 
-while True:
-    time.sleep(5)
-    try:
-        robot_strategy(19) # непрерывный цикл работы робота с установкой объема в 20 USDT
-    except Exception as exc:
-        cprint(f'Ошибка: {exc}', color='red')
-        time.sleep(3)
 
 
