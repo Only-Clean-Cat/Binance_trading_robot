@@ -6,9 +6,9 @@ import colorama
 colorama.init()
 from termcolor import cprint
 import datetime
-import balance_total
+
 '''
-    Торговый робот для крипто-биржи Binance - (версия Only-Clean-Cat: 14.06.2024.1.01)
+    Торговый робот для крипто-биржи Binance - (версия Only-Clean-Cat: 14.06.2024.1.02)
     ВАЖНО!!!!!!  Торговля ведется с комиссией в BNB!!!!!!!!!
     Принцип работы:
     1. Соединение
@@ -35,7 +35,7 @@ def active_coin(): # Поиск самой активной монеты по р
     print(top_coin)
     top_coin = top_coin.symbol.values[0] # выбор самой активной монеты
     info = client.get_symbol_info(top_coin)
-    print(info)
+    #print(info)
     return top_coin
 
 
@@ -50,18 +50,18 @@ def last_active_coin(symbol, interval, lookback): # Анализ роста вы
     return frame
 
 
-def robot_strategy(buy_amt, SL=0.99, Target=1.03, open_position=False): # Стратегия торгового робота
+def robot_strategy(buy_amt, SL=0.99, Target=1.015, open_position=False): # Стратегия торгового робота
     # buy_amt - объем захода в сделку;  SL - порог продажи при падении; Target - порог продажи при росте
     try:
         asset = active_coin() # получаем монету
-        df = last_active_coin(asset,'1m', '120') # анализ активности монеты за промежуток времени
+        df = last_active_coin(asset,'1m', '90') # анализ активности монеты за промежуток времени
     except:  # при ошибке отправляем запрос заноново через одну минуту
         time.sleep(61)
         asset = active_coin()
-        df = last_active_coin(asset, '1m', '120')
+        df = last_active_coin(asset, '1m', '90')
     cur_dt = datetime.datetime.now()
-    quantity = round(buy_amt/df.Close.iloc[-1], 1)# округляем сумму до принятых биржей значений
-    if ((df.Close.pct_change() + 1).cumprod()).iloc[-1] > 1: # если актив растет
+    quantity = round(buy_amt/df.Close.iloc[-1], 1) # округляем сумму до принятых биржей значений
+    if ((df.Close.pct_change() + 1).cumprod()).iloc[-1] > 1.007: # если актив растет
         cprint(f'Монета: {asset}', color='cyan') # монета
         cprint(f'Цена: {df.Close.iloc[-1]}', color='cyan') # цена закрытия последней сделки
         cprint(f'Количество: {quantity}', color='cyan') # объем купленных монет
@@ -107,6 +107,9 @@ def robot_strategy(buy_amt, SL=0.99, Target=1.03, open_position=False): # Стр
                 report.close()
                 print('>' * 50)
                 time.sleep(3)
+                report = open('total_balance.csv', 'a+')
+                report.write(f'{float(total_balance)}\n')
+                report.close()
                 cprint(f'Баланс: {quantity * df.Close.iloc[-1] - sum_deal_open} USDT', color='magenta')
                 time.sleep(3)
                 break
@@ -126,12 +129,23 @@ def robot_strategy(buy_amt, SL=0.99, Target=1.03, open_position=False): # Стр
                 report.close()
                 print('>' * 50)
                 time.sleep(3)
+                report = open('total_balance.csv', 'a+')
+                report.write(f'{float(total_balance)}\n')
+                report.close()
                 cprint(f'Баланс: {quantity * df.Close.iloc[-1] - sum_deal_open} USDT', color='magenta')
                 time.sleep(3)
                 break
     else:
         cprint(f'Рынок падает: Нет монеты подходящей под условия сделки', color='red')
         time.sleep(20)
+
+while True:
+    time.sleep(5)
+    try:
+        robot_strategy(22) # непрерывный цикл работы робота с установкой объема в 20 USDT
+    except Exception as exc:
+        cprint(f'Ошибка: {exc}', color='red')
+        time.sleep(3)
 
 while True:
     time.sleep(5)
